@@ -48,14 +48,38 @@ class GitHubContributionsWidget : AppWidgetProvider() {
             }
         }
         
-        // GitHub contribution colors matching the reference image
-        private val LEVEL_COLORS = arrayOf(
+        // Color themes: 0 = Green (default), 1 = Blue, 2 = Yellow
+        private val GREEN_COLORS = arrayOf(
             Color.parseColor("#2d333b"), // Level 0 - Dark gray (empty days)
             Color.parseColor("#0e4429"), // Level 1 - Dark green
             Color.parseColor("#006d32"), // Level 2 - Medium green
             Color.parseColor("#26a641"), // Level 3 - Light green
             Color.parseColor("#39d353")  // Level 4 - Bright green
         )
+        
+        private val BLUE_COLORS = arrayOf(
+            Color.parseColor("#2d333b"), // Level 0 - Dark gray (empty days)
+            Color.parseColor("#1e3a5f"), // Level 1 - Dark blue
+            Color.parseColor("#3b6ea5"), // Level 2 - Medium blue
+            Color.parseColor("#6b9bd1"), // Level 3 - Light blue
+            Color.parseColor("#a8c8e8")  // Level 4 - Bright blue
+        )
+        
+        private val YELLOW_COLORS = arrayOf(
+            Color.parseColor("#2d333b"), // Level 0 - Dark gray (empty days)
+            Color.parseColor("#5c3d0e"), // Level 1 - Dark amber
+            Color.parseColor("#8b5a1b"), // Level 2 - Medium amber
+            Color.parseColor("#d4a03a"), // Level 3 - Light amber
+            Color.parseColor("#f7c948")  // Level 4 - Bright yellow
+        )
+        
+        private fun getColorsForTheme(theme: Int): Array<Int> {
+            return when (theme) {
+                1 -> BLUE_COLORS
+                2 -> YELLOW_COLORS
+                else -> GREEN_COLORS
+            }
+        }
         
         // Cell size configurations: (cellLayoutId, cellSizeWithMargin, minHeight)
         // Small: 5dp cell + 1dp margin = 6dp per cell, 7 rows = 42dp min
@@ -160,7 +184,16 @@ class GitHubContributionsWidget : AppWidgetProvider() {
                 val widgetData = JSONObject(widgetDataJson)
                 val weeksArray = widgetData.getJSONArray("weeks")
                 
-                Log.d(TAG, "Total weeks in data: ${weeksArray.length()}")
+                // Get color theme from widget data or SharedPreferences
+                val colorTheme = if (widgetData.has("colorTheme")) {
+                    widgetData.getInt("colorTheme")
+                } else {
+                    // Fallback: try to read from SharedPreferences directly
+                    prefs.getInt("flutter.widget_color_theme", prefs.getInt("widget_color_theme", 0))
+                }
+                val levelColors = getColorsForTheme(colorTheme)
+                
+                Log.d(TAG, "Total weeks in data: ${weeksArray.length()}, colorTheme: $colorTheme")
                 
                 // Show as many weeks as will fit, with most recent on the RIGHT (GitHub style)
                 val actualWeeks = minOf(weeksToShow, weeksArray.length())
@@ -199,7 +232,7 @@ class GitHubContributionsWidget : AppWidgetProvider() {
                         
                         if (level >= 0) {
                             // Actual contribution day
-                            val color = LEVEL_COLORS[level.coerceIn(0, 4)]
+                            val color = levelColors[level.coerceIn(0, 4)]
                             cellView.setInt(R.id.cell_view, "setBackgroundColor", color)
                         } else {
                             // Future day - make it transparent/invisible
