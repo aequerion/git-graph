@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/contribution.dart';
+import '../models/activity_summary.dart';
 import '../services/github_service.dart';
 import '../services/widget_service.dart';
 import '../widgets/contribution_graph.dart';
 import '../widgets/shimmer_skeleton.dart';
 import '../widgets/year_comparison.dart';
 import '../widgets/reminder_settings.dart';
+import '../widgets/activity_summary.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,6 +33,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _currentUsername;
   String? _avatarUrl;
   ColorTheme _colorTheme = ColorTheme.green;
+  ActivitySummary? _activitySummary;
+  bool _isLoadingActivitySummary = false;
+  int _selectedActivityYear = DateTime.now().year;
 
   @override
   void initState() {
@@ -94,6 +99,9 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Fetch yearly data for year-over-year comparison
         await _fetchYearlyContributions();
+        
+        // Fetch activity summary
+        await _fetchActivitySummary();
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -127,6 +135,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_yearlyData == null) {
         _fetchYearlyContributions();
       }
+      
+      // Also fetch activity summary if not already loaded
+      if (_activitySummary == null) {
+        _fetchActivitySummary();
+      }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
     } finally {
@@ -149,6 +162,31 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('Failed to fetch yearly data: $e');
     } finally {
       setState(() => _isLoadingYearlyData = false);
+    }
+  }
+
+  Future<void> _fetchActivitySummary({int? year}) async {
+    if (_isLoadingActivitySummary) return;
+    
+    final targetYear = year ?? _selectedActivityYear;
+    
+    setState(() {
+      _isLoadingActivitySummary = true;
+      if (year != null) {
+        _selectedActivityYear = year;
+      }
+    });
+    
+    try {
+      final activitySummary = await GitHubService.fetchActivitySummary(year: targetYear);
+      setState(() {
+        _activitySummary = activitySummary;
+      });
+    } catch (e) {
+      // Silently fail for activity summary - it's not critical
+      debugPrint('Failed to fetch activity summary: $e');
+    } finally {
+      setState(() => _isLoadingActivitySummary = false);
     }
   }
 
@@ -233,6 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isConfigured = false;
         _contributionData = null;
         _yearlyData = null;
+        _activitySummary = null;
         _currentUsername = null;
         _avatarUrl = null;
         _usernameController.clear();
@@ -304,6 +343,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildContributionCard(),
                 const SizedBox(height: 16),
                 _buildYearComparisonCard(),
+                const SizedBox(height: 16),
+                _buildActivitySummaryCard(),
                 const SizedBox(height: 16),
                 const ReminderSettingsCard(),
                 const SizedBox(height: 16),
@@ -679,6 +720,22 @@ class _HomeScreenState extends State<HomeScreen> {
       yearlyData: _yearlyData,
       isLoading: _isLoadingYearlyData,
       colorTheme: _colorTheme,
+    );
+  }
+
+  Widget _buildActivitySummaryCard() {
+    final currentYear = DateTime.now().year;
+    final availableYears = List.generate(5, (i) => currentYear - i);
+    
+    return ActivitySummaryCard(
+      activitySummary: _activitySummary,
+      isLoading: _isLoadingActivitySummary,
+      selectedYear: _selectedActivityYear,
+      availableYears: availableYears,
+      onYearChanged: (year) {
+        HapticFeedback.lightImpact();
+        _fetchActivitySummary(year: year);
+      },
     );
   }
 
