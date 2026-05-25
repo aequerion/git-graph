@@ -9,6 +9,7 @@ class GitHubService {
   static const String _tokenKey = 'github_token';
   static const String _cachedDataKey = 'cached_contribution_data';
   static const String _avatarUrlKey = 'github_avatar_url';
+  static const String _cachedYearlyDataKey = 'cached_yearly_contribution_data';
 
   /// GraphQL query to fetch contribution data and avatar
   static String _getContributionQuery(String username) => '''
@@ -194,6 +195,108 @@ class GitHubService {
     try {
       final data = jsonDecode(cachedJson) as Map<String, dynamic>;
       return ContributionData.fromJson(data);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// GraphQL query to fetch contribution data for a specific year
+  static String _getYearlyContributionQuery(String username, int year) => '''
+    query {
+      user(login: "$username") {
+        contributionsCollection(from: "$year-01-01T00:00:00Z", to: "$year-12-31T23:59:59Z") {
+          contributionCalendar {
+            totalContributions
+          }
+        }
+      }
+    }
+  ''';
+
+  /// Fetch yearly contribution totals for multiple years
+  static Future<Map<int, int>> fetchYearlyContributions({
+    String? username,
+    String? token,
+    int yearsToFetch = 3,
+  }) async {
+    final effectiveUsername = username ?? await getUsername();
+    final effectiveToken = token ?? await getToken();
+
+    if (effectiveUsername == null || effectiveUsername.isEmpty) {
+      throw Exception('GitHub username is required');
+    }
+
+    if (effectiveToken == null || effectiveToken.isEmpty) {
+      throw Exception('GitHub token is required');
+    }
+
+    final currentYear = DateTime.now().year;
+    final yearlyData = <int, int>{};
+
+    try {
+      for (int i = 0; i < yearsToFetch; i++) {
+        final year = currentYear - i;
+        final response = await http.post(
+          Uri.parse(_baseUrl),
+          headers: {
+            'Authorization': 'Bearer $effectiveToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'query': _getYearlyContributionQuery(effectiveUsername, year),
+          }),
+        );
+
+        if (response.statusCode != 200) {
+          continue; // Skip this year if request fails
+        }
+
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+        if (data.containsKey('errors')) {
+          continue; // Skip this year if there are GraphQL errors
+        }
+
+        final user = data['data']?['user'];
+        if (user == null) continue;
+
+        final calendar = user['contributionsCollection']?['contributionCalendar'];
+        if (calendar == null) continue;
+
+        final totalContributions = calendar['totalContributions'] as int? ?? 0;
+        yearlyData[year] = totalContributions;
+      }
+
+      // Cache the data
+      await _cacheYearlyData(yearlyData);
+
+      return yearlyData;
+    } catch (e) {
+      // Try to return cached data if available
+      final cachedData = await getCachedYearlyData();
+      if (cachedData != null && cachedData.isNotEmpty) {
+        return cachedData;
+      }
+      rethrow;
+    }
+  }
+
+  /// Cache yearly contribution data locally
+  static Future<void> _cacheYearlyData(Map<int, int> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonData = data.map((key, value) => MapEntry(key.toString(), value));
+    await prefs.setString(_cachedYearlyDataKey, jsonEncode(jsonData));
+  }
+
+  /// Get cached yearly contribution data
+  static Future<Map<int, int>?> getCachedYearlyData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedJson = prefs.getString(_cachedYearlyDataKey);
+    if (cachedJson == null) return null;
+
+    try {
+      final data = jsonDecode(cachedJson) as Map<String, dynamic>;
+      return data.map((key, value) => MapEntry(int.parse(key), value as int));
     } catch (e) {
       return null;
     }

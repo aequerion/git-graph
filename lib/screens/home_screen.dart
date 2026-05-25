@@ -6,6 +6,7 @@ import '../services/github_service.dart';
 import '../services/widget_service.dart';
 import '../widgets/contribution_graph.dart';
 import '../widgets/shimmer_skeleton.dart';
+import '../widgets/year_comparison.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,6 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _obscureToken = true;
   String? _errorMessage;
   ContributionData? _contributionData;
+  Map<int, int>? _yearlyData;
+  bool _isLoadingYearlyData = false;
   String? _currentUsername;
   String? _avatarUrl;
   ColorTheme _colorTheme = ColorTheme.green;
@@ -87,6 +90,9 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Then fetch fresh data
         await _fetchContributions();
+        
+        // Fetch yearly data for year-over-year comparison
+        await _fetchYearlyContributions();
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -115,10 +121,33 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Update the widget
       await WidgetService.updateWidget();
+      
+      // Also fetch yearly data if not already loaded
+      if (_yearlyData == null) {
+        _fetchYearlyContributions();
+      }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchYearlyContributions() async {
+    if (_isLoadingYearlyData) return;
+    
+    setState(() => _isLoadingYearlyData = true);
+    
+    try {
+      final yearlyData = await GitHubService.fetchYearlyContributions(yearsToFetch: 3);
+      setState(() {
+        _yearlyData = yearlyData;
+      });
+    } catch (e) {
+      // Silently fail for yearly data - it's not critical
+      debugPrint('Failed to fetch yearly data: $e');
+    } finally {
+      setState(() => _isLoadingYearlyData = false);
     }
   }
 
@@ -202,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _isConfigured = false;
         _contributionData = null;
+        _yearlyData = null;
         _currentUsername = null;
         _avatarUrl = null;
         _usernameController.clear();
@@ -271,6 +301,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildUserCard(),
                 const SizedBox(height: 16),
                 _buildContributionCard(),
+                const SizedBox(height: 16),
+                _buildYearComparisonCard(),
                 const SizedBox(height: 16),
                 _buildWidgetInstructions(),
               ],
@@ -636,6 +668,14 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : null,
       ),
+    );
+  }
+
+  Widget _buildYearComparisonCard() {
+    return YearComparisonCard(
+      yearlyData: _yearlyData,
+      isLoading: _isLoadingYearlyData,
+      colorTheme: _colorTheme,
     );
   }
 
