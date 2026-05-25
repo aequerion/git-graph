@@ -7,6 +7,7 @@ import '../services/widget_service.dart';
 import '../widgets/contribution_graph.dart';
 import '../widgets/shimmer_skeleton.dart';
 import '../widgets/year_comparison.dart';
+import '../widgets/reminder_settings.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -303,6 +304,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildContributionCard(),
                 const SizedBox(height: 16),
                 _buildYearComparisonCard(),
+                const SizedBox(height: 16),
+                const ReminderSettingsCard(),
                 const SizedBox(height: 16),
                 _buildWidgetInstructions(),
               ],
