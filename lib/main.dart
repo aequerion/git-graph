@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'screens/home_screen.dart';
 import 'services/widget_service.dart';
+import 'services/notification_service.dart';
 
 const String appGroupId = 'com.github.contributions.widget';
 const String widgetName = 'GitHubContributionsWidget';
@@ -14,6 +15,12 @@ void main() async {
   
   // Initialize widget with cached data if available
   await WidgetService.initializeWidget();
+  
+  // Initialize notification service
+  await NotificationService.initialize();
+  
+  // Reschedule any existing reminders (e.g., after app update or reboot)
+  await NotificationService.rescheduleReminderIfEnabled();
   
   runApp(const GitHubContributionsApp());
 }
