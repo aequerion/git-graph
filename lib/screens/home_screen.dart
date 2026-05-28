@@ -10,6 +10,7 @@ import '../widgets/shimmer_skeleton.dart';
 import '../widgets/year_comparison.dart';
 import '../widgets/reminder_settings.dart';
 import '../widgets/activity_summary.dart';
+import '../widgets/connectivity_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -320,43 +321,54 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _onPullToRefresh,
-        color: const Color(0xFF238636),
-        backgroundColor: const Color(0xFF161b22),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!_isConfigured) ...[
-                _buildSetupCard(),
-              ] else if (_isLoading && _contributionData == null) ...[
-                // Show shimmer skeleton during initial load
-                const LoadingSkeleton(),
-                const SizedBox(height: 16),
-                _buildWidgetInstructions(),
-              ] else ...[
-                _buildUserCard(),
-                const SizedBox(height: 16),
-                _buildContributionCard(),
-                const SizedBox(height: 16),
-                _buildYearComparisonCard(),
-                const SizedBox(height: 16),
-                _buildActivitySummaryCard(),
-                const SizedBox(height: 16),
-                const ReminderSettingsCard(),
-                const SizedBox(height: 16),
-                _buildWidgetInstructions(),
-              ],
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 16),
-                _buildErrorCard(),
-              ],
-            ],
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: _onPullToRefresh,
+            color: const Color(0xFF238636),
+            backgroundColor: const Color(0xFF161b22),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!_isConfigured) ...[
+                    _buildSetupCard(),
+                  ] else if (_isLoading && _contributionData == null) ...[
+                    // Show shimmer skeleton during initial load
+                    const LoadingSkeleton(),
+                    const SizedBox(height: 16),
+                    _buildWidgetInstructions(),
+                  ] else ...[
+                    _buildUserCard(),
+                    const SizedBox(height: 16),
+                    _buildContributionCard(),
+                    const SizedBox(height: 16),
+                    _buildYearComparisonCard(),
+                    const SizedBox(height: 16),
+                    _buildActivitySummaryCard(),
+                    const SizedBox(height: 16),
+                    const ReminderSettingsCard(),
+                    const SizedBox(height: 16),
+                    _buildWidgetInstructions(),
+                  ],
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    _buildErrorCard(),
+                  ],
+                ],
+              ),
+            ),
           ),
-        ),
+          // Connectivity banner at the top
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ConnectivityBanner(),
+          ),
+        ],
       ),
     );
   }
