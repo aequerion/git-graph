@@ -203,6 +203,33 @@ class GitHubService {
     }
   }
 
+  /// Get today's contribution count from cached data
+  /// Returns 0 if no data is available or if today has no contributions
+  static Future<int> getTodayContributions() async {
+    final cachedData = await getCachedData();
+    if (cachedData == null) return 0;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (final week in cachedData.weeks) {
+      for (final day in week.days) {
+        final dayDate = DateTime(day.date.year, day.date.month, day.date.day);
+        if (dayDate.isAtSameMomentAs(today)) {
+          return day.contributionCount;
+        }
+      }
+    }
+
+    return 0;
+  }
+
+  /// Check if user has made any contributions today
+  static Future<bool> hasContributedToday() async {
+    final contributions = await getTodayContributions();
+    return contributions > 0;
+  }
+
   /// GraphQL query to fetch contribution data for a specific year
   static String _getYearlyContributionQuery(String username, int year) => '''
     query {

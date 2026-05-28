@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
+import '../services/github_service.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -153,6 +154,7 @@ class NotificationService {
   }
 
   /// Schedule evening reminder at 11:00 PM with urgent message
+  /// This notification will only be shown if the user has NOT contributed today
   static Future<void> _scheduleEveningReminder() async {
     const androidDetails = AndroidNotificationDetails(
       'evening_reminder',
@@ -191,6 +193,59 @@ class NotificationService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
+      payload: 'evening_reminder',
+    );
+  }
+
+  /// Check if evening notification should be shown (only if no contributions today)
+  /// This method should be called at 11 PM to conditionally show the notification
+  static Future<void> checkAndShowEveningNotification() async {
+    final enabled = await isReminderEnabled();
+    if (!enabled) return;
+
+    // Check if user has contributed today
+    final hasContributed = await GitHubService.hasContributedToday();
+    
+    if (!hasContributed) {
+      // User hasn't contributed today, show the reminder
+      await showEveningReminderNow();
+      debugPrint('Evening reminder shown - no contributions today');
+    } else {
+      debugPrint('Evening reminder skipped - user has already contributed today');
+    }
+  }
+
+  /// Show evening reminder notification immediately
+  static Future<void> showEveningReminderNow() async {
+    const androidDetails = AndroidNotificationDetails(
+      'evening_reminder',
+      'Evening Contribution Reminder',
+      channelDescription: 'Evening reminder before midnight to maintain your streak',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      color: Color(0xFFf85149),
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notifications.show(
+      _eveningReminderId,
+      'Time is Running Out',
+      _getRandomEveningMessage(),
+      notificationDetails,
       payload: 'evening_reminder',
     );
   }
