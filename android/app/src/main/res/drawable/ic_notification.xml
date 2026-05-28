@@ -4,8 +4,32 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- GitHub-style contribution graph icon -->
+    <!-- GitGraph Logo - Stylized G with contribution graph -->
+    
+    <!-- Letter G outline -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M3,3h4v4H3V3z M9,3h4v4H9V3z M15,3h4v4h-4V3z M3,9h4v4H3V9z M9,9h4v4H9V9z M15,9h4v4h-4V9z M3,15h4v4H3v-4z M9,15h4v4H9v-4z M15,15h4v4h-4v-4z"/>
+        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,20c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z"/>
+    
+    <!-- Inner G shape with graph bars -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,7h4v2h-4z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M7,7h2v10H7z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M7,15h6v2H7z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,11h4v2h-4z"/>
+    
+    <!-- Contribution graph dots inside -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11,9m-1,0a1,1 0,1 1,2 0a1,1 0,1 1,-2 0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11,12m-1,0a1,1 0,1 1,2 0a1,1 0,1 1,-2 0"/>
 </vector>
