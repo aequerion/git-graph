@@ -131,15 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // Update the widget
       await WidgetService.updateWidget();
       
-      // Also fetch yearly data if not already loaded
-      if (_yearlyData == null) {
-        _fetchYearlyContributions();
-      }
-      
-      // Also fetch activity summary if not already loaded
-      if (_activitySummary == null) {
-        _fetchActivitySummary();
-      }
+      _fetchYearlyContributions();
+      _fetchActivitySummary();
     } catch (e) {
       setState(() => _errorMessage = e.toString());
     } finally {
