@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/contribution.dart';
 import '../models/activity_summary.dart';
+import '../services/notification_service.dart';
 
 class GitHubService {
   static const String _baseUrl = 'https://api.github.com/graphql';
@@ -153,6 +154,9 @@ class GitHubService {
 
       // Cache the data
       await _cacheData(contributionData);
+
+      // Cancel tonight's evening reminder if the user has already contributed
+      await NotificationService.cancelEveningReminderIfContributed();
 
       return contributionData;
     } catch (e) {
