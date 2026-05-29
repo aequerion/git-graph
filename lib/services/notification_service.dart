@@ -156,6 +156,13 @@ class NotificationService {
   /// Schedule evening reminder at 11:00 PM with urgent message
   /// This notification will only be shown if the user has NOT contributed today
   static Future<void> _scheduleEveningReminder() async {
+    // Skip scheduling if the user has already contributed today
+    final hasContributed = await GitHubService.hasContributedToday();
+    if (hasContributed) {
+      debugPrint('Evening reminder not scheduled - user already contributed today');
+      return;
+    }
+
     const androidDetails = AndroidNotificationDetails(
       'evening_reminder',
       'Evening Contribution Reminder',
@@ -195,6 +202,18 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.time,
       payload: 'evening_reminder',
     );
+  }
+
+  /// Cancel tonight's evening reminder if the user has already contributed today.
+  /// Call this after refreshing contribution data.
+  static Future<void> cancelEveningReminderIfContributed() async {
+    final enabled = await isReminderEnabled();
+    if (!enabled) return;
+    final hasContributed = await GitHubService.hasContributedToday();
+    if (hasContributed) {
+      await _notifications.cancel(_eveningReminderId);
+      debugPrint('Evening reminder cancelled - user has already contributed today');
+    }
   }
 
   /// Check if evening notification should be shown (only if no contributions today)
