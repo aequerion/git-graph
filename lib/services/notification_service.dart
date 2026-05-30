@@ -405,4 +405,33 @@ class NotificationService {
       await scheduleDailyReminders();
     }
   }
+
+  /// Update evening notification based on today's contribution status
+  /// Call this method when contribution data is refreshed
+  static Future<void> updateEveningNotificationBasedOnContributions() async {
+    final enabled = await isReminderEnabled();
+    if (!enabled) return;
+
+    try {
+      final hasContributed = await GitHubService.hasContributedToday();
+      
+      if (hasContributed) {
+        // User has already contributed today, cancel the evening reminder
+        await _notifications.cancel(_eveningReminderId);
+        debugPrint('Evening notification cancelled - user has already contributed today');
+      } else {
+        // User hasn't contributed, make sure evening reminder is scheduled
+        await _scheduleEveningReminder();
+        debugPrint('Evening notification scheduled - user has not contributed today');
+      }
+    } catch (e) {
+      debugPrint('Error updating evening notification: $e');
+    }
+  }
+
+  /// Cancel only the evening reminder
+  static Future<void> cancelEveningReminder() async {
+    await _notifications.cancel(_eveningReminderId);
+    debugPrint('Evening reminder cancelled');
+  }
 }

@@ -89,6 +89,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2"/>
+
+        <!-- Disable Impeller to work around shader compiler crash on macOS ARM (build-time only) -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false"/>
     </application>
     
     <!-- Queries for Android 11+ -->
