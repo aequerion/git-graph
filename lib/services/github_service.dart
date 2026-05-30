@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/contribution.dart';
 import '../models/activity_summary.dart';
+import '../services/notification_service.dart';
 
 class GitHubService {
   static const String _baseUrl = 'https://api.github.com/graphql';
@@ -154,6 +155,9 @@ class GitHubService {
       // Cache the data
       await _cacheData(contributionData);
 
+      // Cancel tonight's evening reminder if the user has already contributed
+      await NotificationService.cancelEveningReminderIfContributed();
+
       return contributionData;
     } catch (e) {
       // Try to return cached data if available
@@ -201,6 +205,33 @@ class GitHubService {
     } catch (e) {
       return null;
     }
+  }
+
+  /// Get today's contribution count from cached data
+  /// Returns 0 if no data is available or if today has no contributions
+  static Future<int> getTodayContributions() async {
+    final cachedData = await getCachedData();
+    if (cachedData == null) return 0;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (final week in cachedData.weeks) {
+      for (final day in week.days) {
+        final dayDate = DateTime(day.date.year, day.date.month, day.date.day);
+        if (dayDate.isAtSameMomentAs(today)) {
+          return day.contributionCount;
+        }
+      }
+    }
+
+    return 0;
+  }
+
+  /// Check if user has made any contributions today
+  static Future<bool> hasContributedToday() async {
+    final contributions = await getTodayContributions();
+    return contributions > 0;
   }
 
   /// GraphQL query to fetch contribution data for a specific year
