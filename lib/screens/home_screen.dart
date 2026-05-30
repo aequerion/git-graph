@@ -5,6 +5,7 @@ import '../models/contribution.dart';
 import '../models/activity_summary.dart';
 import '../services/github_service.dart';
 import '../services/widget_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/contribution_graph.dart';
 import '../widgets/shimmer_skeleton.dart';
 import '../widgets/year_comparison.dart';
@@ -130,6 +131,10 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Update the widget
       await WidgetService.updateWidget();
+      
+      // Update evening notification based on today's contributions
+      // If user has already contributed today, cancel the evening reminder
+      await NotificationService.updateEveningNotificationBasedOnContributions();
       
       _fetchYearlyContributions();
       _fetchActivitySummary();

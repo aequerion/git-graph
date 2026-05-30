@@ -555,6 +555,31 @@ class GitHubService {
     }
   }
 
+  /// Get today's contribution count from cached data
+  static Future<int> getTodayContributions() async {
+    final cachedData = await getCachedData();
+    if (cachedData == null) return 0;
+
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    for (final week in cachedData.weeks) {
+      for (final day in week.days) {
+        final dayDate = DateTime(day.date.year, day.date.month, day.date.day);
+        if (dayDate.isAtSameMomentAs(todayDate)) {
+          return day.contributionCount;
+        }
+      }
+    }
+    return 0;
+  }
+
+  /// Check if user has contributed today
+  static Future<bool> hasContributedToday() async {
+    final contributions = await getTodayContributions();
+    return contributions > 0;
+  }
+
   /// Validate credentials by making a test API call
   static Future<bool> validateCredentials(String username, String token) async {
     try {
