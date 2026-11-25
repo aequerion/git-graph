@@ -265,40 +265,26 @@ class GitHubService {
     }
 
     final currentYear = DateTime.now().year;
-    final yearlyData = <int, int>{};
 
     try {
-      for (int i = 0; i < yearsToFetch; i++) {
-        final year = currentYear - i;
-        final response = await http.post(
-          Uri.parse(_baseUrl),
-          headers: {
-            'Authorization': 'Bearer $effectiveToken',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            'query': _getYearlyContributionQuery(effectiveUsername, year),
-          }),
-        );
+      // Fetch every year in parallel: the per-year requests are independent,
+      // so a serial loop just adds one round-trip of latency per extra year.
+      final results = await Future.wait(
+        List.generate(
+          yearsToFetch,
+          (i) => _fetchContributionsForYear(
+            username: effectiveUsername,
+            token: effectiveToken,
+            year: currentYear - i,
+          ),
+        ),
+      );
 
-        if (response.statusCode != 200) {
-          continue; // Skip this year if request fails
+      final yearlyData = <int, int>{};
+      for (final result in results) {
+        if (result != null) {
+          yearlyData[result.$1] = result.$2;
         }
-
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-
-        if (data.containsKey('errors')) {
-          continue; // Skip this year if there are GraphQL errors
-        }
-
-        final user = data['data']?['user'];
-        if (user == null) continue;
-
-        final calendar = user['contributionsCollection']?['contributionCalendar'];
-        if (calendar == null) continue;
-
-        final totalContributions = calendar['totalContributions'] as int? ?? 0;
-        yearlyData[year] = totalContributions;
       }
 
       // Cache the data
@@ -313,6 +299,45 @@ class GitHubService {
       }
       rethrow;
     }
+  }
+
+  /// Fetch one year's contribution total, or `null` when that year's request
+  /// fails or returns no usable data. A single bad year is skipped rather than
+  /// failing the whole fetch, matching the previous per-year behaviour.
+  static Future<(int, int)?> _fetchContributionsForYear({
+    required String username,
+    required String token,
+    required int year,
+  }) async {
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'query': _getYearlyContributionQuery(username, year),
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      return null; // Skip this year if request fails
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (data.containsKey('errors')) {
+      return null; // Skip this year if there are GraphQL errors
+    }
+
+    final user = data['data']?['user'];
+    if (user == null) return null;
+
+    final calendar = user['contributionsCollection']?['contributionCalendar'];
+    if (calendar == null) return null;
+
+    final totalContributions = calendar['totalContributions'] as int? ?? 0;
+    return (year, totalContributions);
   }
 
   /// Cache yearly contribution data locally

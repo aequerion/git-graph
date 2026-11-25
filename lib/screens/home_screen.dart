@@ -137,8 +137,10 @@ class _HomeScreenState extends State<HomeScreen> {
       // If user has already contributed today, cancel the evening reminder
       await NotificationService.updateEveningNotificationBasedOnContributions();
       
-      _fetchYearlyContributions();
-      _fetchActivitySummary();
+      // Await the secondary fetches so they share this load's lifecycle and
+      // their failures can reach the UI, rather than racing in the background.
+      await _fetchYearlyContributions();
+      await _fetchActivitySummary();
     } catch (e) {
       setState(() => _errorMessage = e.toString());
     } finally {
@@ -148,17 +150,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchYearlyContributions() async {
     if (_isLoadingYearlyData) return;
-    
+
     setState(() => _isLoadingYearlyData = true);
-    
+
     try {
       final yearlyData = await GitHubService.fetchYearlyContributions(yearsToFetch: 3);
       setState(() {
         _yearlyData = yearlyData;
       });
     } catch (e) {
-      // Silently fail for yearly data - it's not critical
+      // Non-critical: the main graph still renders. Surface it to the UI
+      // instead of dropping it silently, but do not clobber a primary error.
       debugPrint('Failed to fetch yearly data: $e');
+      setState(() => _errorMessage ??= 'Could not load the Year Comparison data.');
     } finally {
       setState(() => _isLoadingYearlyData = false);
     }
@@ -166,24 +170,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchActivitySummary({int? year}) async {
     if (_isLoadingActivitySummary) return;
-    
+
     final targetYear = year ?? _selectedActivityYear;
-    
+
     setState(() {
       _isLoadingActivitySummary = true;
       if (year != null) {
         _selectedActivityYear = year;
       }
     });
-    
+
     try {
       final activitySummary = await GitHubService.fetchActivitySummary(year: targetYear);
       setState(() {
         _activitySummary = activitySummary;
       });
     } catch (e) {
-      // Silently fail for activity summary - it's not critical
+      // Non-critical: surface it to the UI instead of dropping it silently,
+      // without clobbering a primary error.
       debugPrint('Failed to fetch activity summary: $e');
+      setState(() => _errorMessage ??= 'Could not load the Activity Summary data.');
     } finally {
       setState(() => _isLoadingActivitySummary = false);
     }
